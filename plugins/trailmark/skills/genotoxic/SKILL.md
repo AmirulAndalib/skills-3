@@ -212,8 +212,10 @@ removals to production functions, and marks corroborated functions:
 uv run {baseDir}/scripts/genotoxic_triage.py --target {targetDir} --mutants outcomes.json [--necessist removals.json] [--language auto] [--out triage.json]
 ```
 
-Paths may be relative to `{targetDir}` or to the working directory. With
-`--out`, the full JSON goes to the file and stdout gets a summary.
+Source paths inside the records may be relative to `{targetDir}` or to the
+working directory; the `--mutants`, `--necessist` and `--out` file arguments
+are relative to the working directory. With `--out`, the full JSON goes to
+the file and stdout gets a summary.
 
 `--mutants` takes Universal Mutant Records (see
 [references/mutation-frameworks.md](references/mutation-frameworks.md)) or

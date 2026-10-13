@@ -349,3 +349,38 @@ def test_graph_analysis_recipes_bind_and_classify(project):
     buckets = json.loads(proc.stdout.splitlines()[-1])
     assert buckets["false_positives"] == ["dead"]
     assert sorted(buckets["missing_tests"]) == ["route", "small"]
+
+
+def test_undecided_outcomes_are_an_incomplete_campaign_not_success(project, tmp_path):
+    mewt = {
+        "results": [
+            {
+                "mutant": {"id": 1, "line_offset": 5},
+                "target": {"path": "app/lib.py"},
+                "outcome": None,
+            }
+        ]
+    }
+    proc = triage(project, "--mutants", str(write(tmp_path / "mewt.json", mewt)))
+    assert proc.returncode == 2 and "incomplete" in proc.stderr
+    odd = [{"file_path": "app/lib.py", "line": 6, "status": "pending"}]
+    assert triage(project, "--mutants", str(write(tmp_path / "odd.json", odd))).returncode == 2
+
+
+def test_one_record_jsonl_files_are_accepted(project, tmp_path):
+    one = tmp_path / "one.jsonl"
+    one.write_text(json.dumps({"id": 1, "file_path": "app/lib.py", "line": 6}) + "\n")
+    removal = tmp_path / "r.jsonl"
+    removal.write_text(
+        json.dumps(
+            {"test_file_path": "tests/test_lib.py", "line": 5, "removed_statement": "small(1)"}
+        )
+        + "\n"
+    )
+    proc = triage(project, "--mutants", str(one), "--necessist", str(removal))
+    assert proc.returncode == 0, proc.stderr
+    out = json.loads(proc.stdout)
+    assert (
+        out["mutants"][0]["node_id"] == "app.lib:small"
+        and out["necessist"][0]["node_id"] == "app.lib:small"
+    )

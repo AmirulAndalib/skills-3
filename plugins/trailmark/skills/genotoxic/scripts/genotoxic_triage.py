@@ -55,6 +55,8 @@ LOGGING = re.compile(
 )
 MATH_LOG = re.compile(r"\b(math|cmath|np|numpy|torch|Math)\.log\w*\s*\(")
 CALL = re.compile(r"(?:(\w+)\.)?(\w+!?)\s*\(")
+# Statuses that mean the mutant was decided (caught); anything else is an incomplete campaign.
+DECIDED = {"killed", "caught", "timeout"}
 SUBGRAPHS = ("tainted", "privilege_boundary", "high_blast_radius", "entrypoint_reachable")
 FUZZ_BUCKETS = ("missing_tests", "fuzzing_targets")
 
@@ -91,17 +93,20 @@ def logging_hint(text: str) -> bool:
     return bool(LOGGING.search(MATH_LOG.sub("", text)))
 
 
-def load_json_or_jsonl(path: Path):
+def load_json_or_jsonl(path: Path, record_key: str):
     text = path.read_text(encoding="utf8")
     try:
-        return json.loads(text)
+        data = json.loads(text)
     except json.JSONDecodeError:
         return [json.loads(line) for line in text.splitlines() if line.strip()]
+    if isinstance(data, dict) and record_key in data:  # a one-line JSONL file
+        return [data]
+    return data
 
 
 def load_records(path: Path) -> tuple[list[dict], dict[str, int]]:
     """Survived records, plus a count of every record dropped, by status."""
-    data = load_json_or_jsonl(path)
+    data = load_json_or_jsonl(path, "file_path")
     dropped: dict[str, int] = {}
     if isinstance(data, dict) and isinstance(data.get("results"), list):  # mewt / muton
         if not data["results"]:
@@ -143,7 +148,7 @@ def load_records(path: Path) -> tuple[list[dict], dict[str, int]]:
 
 
 def load_removals(path: Path) -> list[dict]:
-    data = load_json_or_jsonl(path)
+    data = load_json_or_jsonl(path, "removed_statement")
     if not isinstance(data, list):
         raise ValueError("expected a list of necessist removal records")
     for i, rec in enumerate(data):
@@ -337,6 +342,12 @@ def build(args: argparse.Namespace) -> tuple[dict, list[str]]:
     for r in triaged + mapped:
         counts[r["graph_bucket"]] = counts.get(r["graph_bucket"], 0) + 1
     problems = []
+    undecided = {k: v for k, v in dropped.items() if k not in DECIDED}
+    if not mutants and undecided:
+        raise ValueError(
+            f"no survived mutants, and {sum(undecided.values())} record(s) have no decided "
+            f"outcome {undecided}; the campaign is incomplete, not clean"
+        )
     if not mutants:
         problems.append(f"no survived mutants to triage (dropped by status: {dropped})")
     elif all(m["graph_bucket"] == "unbound" for m in triaged):
