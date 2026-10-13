@@ -115,9 +115,10 @@ the working tree.
 BEFORE_DIR=$(mktemp -d)
 AFTER_DIR=$(mktemp -d)
 
-# Create worktrees (run from repo root)
-git worktree add "$BEFORE_DIR" {before_ref}
-git worktree add "$AFTER_DIR" {after_ref}
+# Create worktrees (run from repo root). --detach lets a ref that is
+# already checked out (such as the current branch) be compared.
+git worktree add --detach "$BEFORE_DIR" {before_ref}
+git worktree add --detach "$AFTER_DIR" {after_ref}
 ```
 
 If comparing two directories instead of git refs, skip this phase and
@@ -242,8 +243,8 @@ to add source-level context to findings.
 | Severity | Structural Signal |
 |----------|------------------|
 | CRITICAL | New tainted path to sensitive function, removed auth boundary |
-| HIGH | New entrypoint + high blast radius, large CC increase on tainted node |
-| MEDIUM | New trust-boundary-crossing edges, moderate CC increase |
+| HIGH | New entrypoint + high blast radius, CC increase > 10 on tainted node |
+| MEDIUM | New trust-boundary-crossing edges, moderate CC increase (> 3) |
 | LOW | Added nodes without entrypoint reachability |
 | INFO | Dead code removal, complexity reductions |
 
