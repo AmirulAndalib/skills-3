@@ -30,6 +30,29 @@ Do NOT use this skill for:
 - Analyzing source code directly (SARIF is for processing existing scan results)
 - Triaging findings without SARIF input (use variant-analysis or audit skills)
 
+## Shortcut: Bundled CLI
+
+Start here. The bundled helper answers the common questions in one call each,
+with severity resolved from the rule when `result.level` is absent, and returns
+compact JSON instead of the whole file:
+
+```bash
+H={baseDir}/resources/sarif_helpers.py
+uv run --no-project "$H" summary results.sarif                 # counts by level, top rules
+uv run --no-project "$H" filter results.sarif --level error    # matching findings (--rule, --path)
+uv run --no-project "$H" dedupe a.sarif b.sarif                # unique findings across files
+uv run --no-project "$H" diff baseline.sarif current.sarif     # new / fixed / unchanged
+uv run --no-project "$H" csv results.sarif > findings.csv      # CSV, formula cells escaped
+```
+
+- Lists are capped by `--limit` (default 100; `0` means all) and `summary` by
+  `--top-rules` (default 20); the JSON reports how many were omitted.
+- Exit 2 with `{"status": "error", ...}` means the input is not a complete scan
+  (null `results`, `executionSuccessful: false`, unsupported version).
+  Treat it as incomplete, never as clean.
+- Read raw SARIF only when no command fits; it is often very large. Write
+  Python against the library (below) for anything else.
+
 ## SARIF Structure Overview
 
 SARIF 2.1.0 is the current OASIS standard. Every SARIF file has this hierarchical structure:
