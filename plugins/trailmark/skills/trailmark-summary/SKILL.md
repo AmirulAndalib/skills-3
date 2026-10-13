@@ -35,6 +35,25 @@ summary.
 
 The target directory is passed via the `args` parameter.
 
+## Shortcut
+
+Run the bundled helper first. It finds the Python that already has Trailmark
+(the `trailmark` launcher's interpreter or a global one), installs nothing,
+never runs a project-local `trailmark` or creates a `.venv`, and builds one
+graph for both the language list and the summary:
+
+```bash
+uv run --no-project --no-python-downloads "{baseDir}/scripts/summary.py" "{args}"
+```
+
+- **Exit 0:** return `languages` and the complete `summary_text` (plus
+  `version` when present). The helper has already checked that `Entrypoints:`
+  and `Dependencies:` are present, so skip Steps 1-4.
+- **Exit 2:** report "Trailmark found no supported languages under target" and
+  return.
+- **Any other result:** follow Steps 1-4 below, still without installing
+  anything. Pass `--python=PATH` only for an interpreter you trust.
+
 ## Execution
 
 **Step 1: Check that trailmark is available.**
