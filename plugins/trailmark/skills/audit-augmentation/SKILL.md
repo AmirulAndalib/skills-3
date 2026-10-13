@@ -73,6 +73,30 @@ or external endpoints can also be declared once in `.trailmark/links.toml`
 re-derived per session. Declared external endpoints materialize as
 `proxy.external:<symbol>` nodes on every parse.
 
+## Shortcut: One-Process Helper
+
+Use this first. The bundled helper runs Workflow Steps 1-5 in one Python
+process: it builds the graph (resolving the target to an absolute path), runs
+pre-analysis, imports the inputs, and cross-references every finding subgraph
+with `tainted`, `high_blast_radius`, and `privilege_boundary`:
+
+```bash
+uv run --no-project "{baseDir}/scripts/augment_context.py" --target {targetDir} \
+    --language auto --sarif results.sarif --weaudit .vscode/alice.weaudit \
+    [--binary binary_graph.json] --out augmented.json --summary-out summary.json
+```
+
+- `summary.json` holds the matched and unmatched counts per source and the
+  intersections: `findings_on_tainted`, `error_on_tainted`,
+  `findings_on_high_blast_radius`, `findings_on_privilege_boundary`, and
+  `signals_available`. Report unmatched counts as Step 3 requires.
+- Stdout lists `priority_nodes` ranked by risk signals, then severity;
+  `augmented.json` keeps the complete result. Without `--out`, a list longer
+  than `--limit` (default 100) is an error rather than a silent truncation.
+- It takes one file of each kind; merge several SARIF files' `runs` first (see
+  [references/formats.md](references/formats.md)). Use the Programmatic API
+  below for full annotation text or several binary graphs.
+
 ## Quick Start
 
 Pass the target as an absolute path (for example `"$(pwd)/src"`), in the CLI
