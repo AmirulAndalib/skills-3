@@ -62,6 +62,43 @@ programmatically. If installation fails, report the error.
 
 ---
 
+## Fast Path: evolve.py
+
+Use this first. The bundled helper performs Phases 1-3 and 5 in one call
+(detached worktrees, both graph builds with pre-analysis, the native diff,
+the subgraph diff, and cleanup), then fills every deterministic section of
+the report from that evidence:
+
+```bash
+uv run --no-project {baseDir}/scripts/evolve.py --repo . --before {before_ref} \
+    --after {after_ref} --language auto --output-dir graph-evolution
+# or: --before-dir DIR --after-dir DIR
+# or: --before-graph B.json --after-graph A.json --native-diff D.json
+```
+
+- Always pass `--language` (the CLI default parses Python only).
+- Read `summary.json`, not the raw diffs under `evidence/`. It holds the
+  summary deltas, `node_changes`, `edge_changes`, `subgraph_changes`, and
+  `candidates` with severities proposed from the table in Phase 4.
+- Do Phase 4 from it: read the source for each candidate, confirm or change
+  the severity, and rewrite `findings.md` in one Write. Every candidate ID
+  needs a disposition line, `confirmed`, `dismissed` or `needs-review`
+  followed by ` — <source-based reason>`; one line may cover several similar
+  candidates (`**Disposition C0003, C0004, C0010:** dismissed — same rename`).
+  Keep `**Security impact:**` and `**Recommendation:**` for each finding you
+  report, without `TODO`.
+- Replace the one `TODO` in the report's Limitations line, then run
+  `evolve.py --assemble --output-dir graph-evolution`. It copies the findings
+  into `GRAPH_EVOLUTION_<name>.md` and names any line it still rejects.
+- `--output-dir` must be new or empty, and `--name` sets `<name>`; copy the
+  outputs elsewhere afterwards if the task requires other paths.
+
+When the helper runs, it replaces Phases 1-3 and 5: do not also build graphs
+or compute diffs by hand. Phases 1-5 below remain the manual procedure (use
+them only if the helper fails) and the rules the helper follows.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -84,6 +121,9 @@ programmatically. If installation fails, report the error.
 │
 ├─ Need the report output format?
 │  └─ Read: references/report-format.md
+│
+├─ Comparing two refs, two directories, or two exports?
+│  └─ Use the Fast Path (evolve.py); fall back to Phase 1 if it fails
 │
 ├─ Already have two graph JSON exports?
 │  └─ Jump to Phase 3 (run native diff + graph_diff.py)
@@ -215,7 +255,8 @@ The subgraph diff contains:
 ### Phase 4: Interpret Diff and Generate Report
 
 Read **both** diff JSON files and generate a security-focused markdown
-report.
+report. If you used the Fast Path, read `summary.json` instead of the two raw
+diff files.
 See [references/report-format.md](references/report-format.md) for
 the full template.
 
