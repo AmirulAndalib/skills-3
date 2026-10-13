@@ -280,13 +280,22 @@ def compute_fingerprint(result: dict, include_message: bool = True) -> str:
     return hashlib.sha256("|".join(components).encode()).hexdigest()[:16]
 
 
+def finding_key(f: Finding) -> tuple[str | None, str, str]:
+    """Identity for dedupe and diff: a fingerprint is only meaningful within its tool and rule.
+
+    Two different rules can report the same `partialFingerprints` value (it hashes the
+    source line, not the rule), so the fingerprint alone would merge different findings.
+    """
+    return (f.tool_name, f.rule_id, f.fingerprint or compute_fingerprint(f.raw))
+
+
 def deduplicate(findings: list[Finding]) -> list[Finding]:
     """Remove duplicate findings based on fingerprints."""
     seen = set()
     unique = []
 
     for f in findings:
-        key = f.fingerprint or compute_fingerprint(f.raw)
+        key = finding_key(f)
         if key not in seen:
             seen.add(key)
             unique.append(f)
@@ -320,16 +329,12 @@ def diff_findings(
         - fixed: findings in baseline but not current
         - unchanged: findings in both
     """
-    baseline_fps = {f.fingerprint or compute_fingerprint(f.raw) for f in baseline}
-    current_fps = {f.fingerprint or compute_fingerprint(f.raw) for f in current}
+    baseline_fps = {finding_key(f) for f in baseline}
+    current_fps = {finding_key(f) for f in current}
 
-    new = [f for f in current if (f.fingerprint or compute_fingerprint(f.raw)) not in baseline_fps]
-    fixed = [
-        f for f in baseline if (f.fingerprint or compute_fingerprint(f.raw)) not in current_fps
-    ]
-    unchanged = [
-        f for f in current if (f.fingerprint or compute_fingerprint(f.raw)) in baseline_fps
-    ]
+    new = [f for f in current if finding_key(f) not in baseline_fps]
+    fixed = [f for f in baseline if finding_key(f) not in current_fps]
+    unchanged = [f for f in current if finding_key(f) in baseline_fps]
 
     return new, fixed, unchanged
 
