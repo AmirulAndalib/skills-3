@@ -80,6 +80,28 @@ Extensions and settings from all detected languages should be merged into the co
 
 ## Phase 2: Generate Configuration
 
+### Shortcut: Scaffold Helper
+
+Use this first. The bundled helper applies every rule in this skill (name and
+slug inference, language detection, the template substitutions, the
+language-specific extensions, settings, features, volumes, and the
+`postCreateCommand` order) and writes the five files without retyping the
+templates:
+
+```bash
+uv run --no-project {baseDir}/scripts/scaffold.py . --dry-run
+uv run --no-project {baseDir}/scripts/scaffold.py .
+```
+
+- Read the `--dry-run` preview first. Override what it inferred with
+  `--name`, `--slug`, or `--langs python,node,rust,go`.
+- If `pyproject.toml` requires a Python other than the template's 3.13, pass
+  `--python-version X.Y`.
+- It refuses to overwrite an existing `.devcontainer/`, and it validates the
+  result (all five files, valid JSON, no placeholders left) before reporting.
+- If `uv` is unavailable, run it with `python3` (3.11+). If the helper fails,
+  follow the manual steps below; they are the rules it implements.
+
 Start with base templates from `resources/` directory. Substitute:
 
 - `{{PROJECT_NAME}}` → Human-readable name (e.g., "My Project")
@@ -288,7 +310,8 @@ Generate these files in the project's `.devcontainer/` directory:
 
 ## Validation Checklist
 
-Before presenting files to the user, verify:
+The scaffold helper runs checks 1-3 itself. Before presenting files to the
+user, verify:
 
 1. All `{{PROJECT_NAME}}` placeholders are replaced with the human-readable name
 2. All `{{PROJECT_SLUG}}` placeholders are replaced with the slugified name
