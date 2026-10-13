@@ -122,7 +122,7 @@ echo "Found ${#FOUND_DBS[@]} existing database(s)"
 # exists prints nothing and reports success.
 for db in "${FOUND_DBS[@]}"; do
   CODEQL_LANG=$(codeql resolve database --format=json -- "$db" 2>/dev/null | jq -r '.languages[0]')
-  CREATED=$(grep '^creationMetadata:' -A5 "$db/codeql-database.yml" 2>/dev/null | grep 'creationTime' | awk '{print $2}')
+  CREATED=$(grep '^creationMetadata:' -A5 "$db/codeql-database.yml" 2>/dev/null | sed -n 's/^ *creationTime: *//p')
   echo "$db — language: $CODEQL_LANG, created: $CREATED"
 done
 ```
@@ -207,8 +207,11 @@ end to end: detect the language and toolchain, walk the method ladder applying f
 [build-fixes.md](references/build-fixes.md) between rungs, and enforce the quality gate.
 
 ```
-/static-analysis:codeql-build {"target": "/abs/path", "lang": "cpp"}
+/static-analysis:codeql-build {"target": "/abs/path", "out": "/abs/static_analysis_codeql_1", "lang": "cpp"}
 ```
+
+Pass the `OUTPUT_DIR` you already resolved, as an absolute path, in `out`. Without it the
+build auto-increments past the directory you just created and the database lands in `_2`.
 
 It asks nothing. Every method failing, and a database that built but sits below the quality
 threshold, come back as statuses — `no-method-succeeded` and `built-below-threshold` — for you
