@@ -75,15 +75,19 @@ print(json.dumps(detect_languages(sys.argv[1])))
 PY
 ```
 
-If the import fails, rerun the same snippet with `uv run --with trailmark python - "{args}"`.
+If the import fails (a `uv tool install` environment is not importable from
+the system `python3`), rerun the same snippet with the interpreter from the
+CLI's shebang, which needs no install:
+`"$(head -1 "$(command -v trailmark)" | sed 's/^#!//')" - "{args}"`.
+If that also fails, report "trailmark is not installed" and return.
 If the result is `[]`, report "Trailmark found no supported languages under
 target" and return.
 
 **Step 3: Run the summary with auto-detection.**
 
 ```bash
-trailmark analyze --language auto --summary {args} 2>&1 || \
-  uv run trailmark analyze --language auto --summary {args} 2>&1
+trailmark analyze --language auto --summary "{args}" 2>&1 || \
+  uv run trailmark analyze --language auto --summary "{args}" 2>&1
 ```
 
 **Step 4: Verify the output.**
