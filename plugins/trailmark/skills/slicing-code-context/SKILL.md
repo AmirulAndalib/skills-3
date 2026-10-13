@@ -149,6 +149,8 @@ context, stop delegating and handle or escalate the task in the coordinator.
 - `unsupported_trailmark`: install or select Trailmark 0.5.x; do not silently use a different schema.
 - `trailmark_analysis_failed`: correct the reported language/parser failure before delegating.
 - `io_error`: a filesystem failure (permissions, symlink loop); fix the target tree and retry.
+- Any other code: fix the input its message names before delegating; on
+  `ambiguous_symbol`, the candidate IDs are in the error `details`.
 
 ## Example Requests
 
