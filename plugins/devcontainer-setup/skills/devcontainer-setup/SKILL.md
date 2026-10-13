@@ -55,7 +55,7 @@ Convert to slug: lowercase, replace spaces/underscores with hyphens.
 
 | Language | Detection Files |
 |----------|-----------------|
-| Python | `pyproject.toml`, `*.py` |
+| Python | `pyproject.toml`, `requirements.txt`, `setup.py`, `*.py` |
 | Node/TypeScript | `package.json`, `tsconfig.json` |
 | Rust | `Cargo.toml` |
 | Go | `go.mod`, `go.sum` |
@@ -69,9 +69,11 @@ If multiple languages are detected, configure all of them in the following prior
 3. **Rust** - Uses devcontainer feature
 4. **Go** - Uses devcontainer feature
 
-For multi-language `postCreateCommand`, chain all setup commands:
+For multi-language `postCreateCommand`, chain all setup commands. Python's
+environment setup comes first, then the post-install script, then the other
+languages in the priority order above:
 ```
-uv run /opt/post_install.py && uv sync && npm ci
+rm -rf .venv && uv sync && uv run --no-project /opt/post_install.py && npm ci
 ```
 
 Extensions and settings from all detected languages should be merged into the configuration.
@@ -139,7 +141,7 @@ Add to `customizations.vscode.settings`:
 **postCreateCommand:**
 If `pyproject.toml` exists, chain commands:
 ```
-rm -rf .venv && uv sync && uv run /opt/post_install.py
+rm -rf .venv && uv sync && uv run --no-project /opt/post_install.py
 ```
 
 ---
@@ -167,11 +169,13 @@ Add to `customizations.vscode.settings`:
 ```
 
 **postCreateCommand:**
-Detect package manager from lockfile and chain with base command:
-- `pnpm-lock.yaml` → `uv run /opt/post_install.py && pnpm install --frozen-lockfile`
-- `yarn.lock` → `uv run /opt/post_install.py && yarn install --frozen-lockfile`
-- `package-lock.json` → `uv run /opt/post_install.py && npm ci`
-- No lockfile → `uv run /opt/post_install.py && npm install`
+Detect package manager from lockfile and chain with base command. The base
+image installs Node through fnm, which provides `corepack` but no `pnpm` or
+`yarn` shim, so call those through `corepack`:
+- `pnpm-lock.yaml` → `uv run --no-project /opt/post_install.py && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm install --frozen-lockfile`
+- `yarn.lock` → `uv run --no-project /opt/post_install.py && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack yarn install --frozen-lockfile`
+- `package-lock.json` → `uv run --no-project /opt/post_install.py && npm ci`
+- No lockfile → `uv run --no-project /opt/post_install.py && npm install`
 
 ---
 
@@ -203,11 +207,11 @@ Add to `customizations.vscode.settings`:
 **postCreateCommand:**
 If `Cargo.lock` exists, use locked builds:
 ```
-uv run /opt/post_install.py && cargo build --locked
+uv run --no-project /opt/post_install.py && cargo build --locked
 ```
 If no lockfile, use standard build:
 ```
-uv run /opt/post_install.py && cargo build
+uv run --no-project /opt/post_install.py && cargo build
 ```
 
 ---
@@ -241,7 +245,7 @@ Add to `customizations.vscode.settings`:
 
 **postCreateCommand:**
 ```
-uv run /opt/post_install.py && go mod download
+uv run --no-project /opt/post_install.py && go mod download
 ```
 
 ---
